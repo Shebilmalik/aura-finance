@@ -1302,7 +1302,7 @@ body::before {
         </div>
       </div>
       <div id="walletArea">
-        <button class="btn btn-primary" onclick="connectWallet()">⚡ Connect OPWallet</button>
+        <button class="btn btn-primary" id="connectWalletBtn" onclick="connectWallet()">⚡ Connect OPWallet</button>
       </div>
     </div>
   </div>
@@ -1856,19 +1856,162 @@ function showPageMobile(id, el) {
 }
 
 // ── Wallet ────────────────────────────────────────────
-function connectWallet() {
+
+// Check if OPWallet is installed on page load
+window.addEventListener('load', async () => {
+  checkOPWalletInstalled();
+  // Auto-reconnect if previously connected
+  if (window.opnet && window.opnet.isConnected) {
+    try {
+      const accounts = await window.opnet.getAccounts();
+      if (accounts && accounts.length > 0) {
+        onWalletConnected(accounts[0]);
+      }
+    } catch(e) {}
+  }
+});
+
+function checkOPWalletInstalled() {
+  const btn = document.getElementById('connectWalletBtn');
+  if (!btn) return;
+  if (window.opnet || window.unisat || window.bitcoin) {
+    btn.textContent = '⚡ Connect OPWallet';
+    btn.style.opacity = '1';
+  } else {
+    btn.textContent = '⚡ Connect OPWallet';
+    btn.style.opacity = '1';
+  }
+}
+
+async function connectWallet() {
+  // ── Try real OPWallet first ──
+  if (window.opnet) {
+    try {
+      showNotification('⏳ Connecting OPWallet...');
+      const accounts = await window.opnet.requestAccounts();
+      if (accounts && accounts.length > 0) {
+        onWalletConnected(accounts[0]);
+        return;
+      }
+    } catch (err) {
+      if (err.code === 4001) {
+        showNotification('⚠ Connection rejected by user');
+        return;
+      }
+      showNotification('⚠ OPWallet error: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  // ── Try UniSat wallet (also supports Bitcoin) ──
+  if (window.unisat) {
+    try {
+      showNotification('⏳ Connecting UniSat Wallet...');
+      const accounts = await window.unisat.requestAccounts();
+      if (accounts && accounts.length > 0) {
+        onWalletConnected(accounts[0]);
+        return;
+      }
+    } catch (err) {
+      if (err.code === 4001) {
+        showNotification('⚠ Connection rejected by user');
+        return;
+      }
+    }
+  }
+
+  // ── No wallet found — show install prompt ──
+  showWalletInstallPrompt();
+}
+
+function onWalletConnected(address) {
   STATE.connected = true;
-  STATE.address = 'bc1p4f8a' + Math.random().toString(36).substr(2,6) + '...c931';
+  STATE.address = address;
+  // Shorten address for display: bc1p4f8a...c931
+  const short = address.length > 16
+    ? address.slice(0, 8) + '...' + address.slice(-6)
+    : address;
+
   document.getElementById('walletArea').innerHTML = `
-    <div class="wallet-connected">
+    <div class="wallet-connected" style="cursor:pointer" onclick="disconnectWallet()" title="Click to disconnect">
       <div class="wallet-dot"></div>
-      <div class="wallet-addr">${STATE.address}</div>
+      <div class="wallet-addr">${short}</div>
     </div>
   `;
   document.getElementById('myPositionsCard').style.display = 'block';
   document.getElementById('votingPower').textContent = '1,000 PILL';
   renderPositions();
-  showNotification('✓ OPWallet Connected Successfully');
+  showNotification('✓ Wallet Connected: ' + short);
+
+  // Listen for account changes
+  if (window.opnet && window.opnet.on) {
+    window.opnet.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) {
+        disconnectWallet();
+      } else {
+        onWalletConnected(accounts[0]);
+      }
+    });
+  }
+  if (window.unisat && window.unisat.on) {
+    window.unisat.on('accountsChanged', (accounts) => {
+      if (accounts.length === 0) disconnectWallet();
+      else onWalletConnected(accounts[0]);
+    });
+  }
+}
+
+function disconnectWallet() {
+  STATE.connected = false;
+  STATE.address = '';
+  STATE.vaultPositions = { 0: null, 1: null, 2: null };
+  document.getElementById('walletArea').innerHTML = `
+    <button class="btn btn-primary" id="connectWalletBtn" onclick="connectWallet()">⚡ Connect OPWallet</button>
+  `;
+  document.getElementById('myPositionsCard').style.display = 'none';
+  showNotification('Wallet disconnected');
+}
+
+function showWalletInstallPrompt() {
+  // Show a helpful modal guiding user to install OPWallet
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'walletInstallModal';
+  overlay.innerHTML = `
+    <div class="modal" style="text-align:center;max-width:400px">
+      <button class="modal-close" onclick="document.getElementById('walletInstallModal').remove()">✕</button>
+      <div style="font-size:48px;margin-bottom:16px">₿</div>
+      <div class="modal-title mb-8">No Bitcoin Wallet Found</div>
+      <div class="text-sm text-muted mb-24">
+        You need OPWallet or UniSat Wallet to connect to Aura Finance on OP_NET Testnet.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <a href="https://opnet.org/wallet" target="_blank" class="btn btn-primary w-full" style="justify-content:center">
+          ⚡ Install OPWallet (Recommended)
+        </a>
+        <a href="https://unisat.io" target="_blank" class="btn btn-ghost w-full" style="justify-content:center">
+          Install UniSat Wallet
+        </a>
+      </div>
+      <div class="text-xs text-muted">After installing, refresh this page and try again</div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="text-xs text-muted mb-8">Just want to explore the UI?</div>
+        <button class="btn btn-ghost w-full" onclick="connectWalletDemo();document.getElementById('walletInstallModal').remove()">
+          👁 Preview Mode (Demo)
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.remove();
+  });
+}
+
+function connectWalletDemo() {
+  // Demo mode — simulated wallet for UI preview
+  const demoAddr = 'bc1p4f8aura' + Math.random().toString(36).substr(2,4) + 'demo';
+  onWalletConnected(demoAddr);
+  showNotification('👁 Preview Mode — Wallet simulated');
 }
 
 // ── Test Tokens ───────────────────────────────────────

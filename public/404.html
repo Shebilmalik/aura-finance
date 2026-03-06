@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>404 — Aura Finance</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #010204;
+    color: #e8f4ff;
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,210,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .container { position: relative; z-index: 1; padding: 40px; }
+  .code { font-size: 120px; font-weight: 800; letter-spacing: -6px; color: #00d2ff; opacity: 0.15; line-height: 1; margin-bottom: 8px; }
+  .title { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+  .sub { font-size: 14px; color: #6b8fa8; font-family: 'JetBrains Mono', monospace; margin-bottom: 32px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #00d2ff, rgba(0,150,200,0.9));
+    color: #000; border-radius: 10px;
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 0 20px rgba(0,210,255,0.25);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(0,210,255,0.4); }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="code">404</div>
+    <div class="title">Page Not Found</div>
+    <div class="sub">This route doesn't exist on the protocol</div>
+    <a class="btn" href="/">◈ Return to Dashboard</a>
+  </div>
+</body>
+</html>
